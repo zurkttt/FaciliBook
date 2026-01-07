@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-info text-dark d-flex justify-content-between align-items-center">
+        <h4>User Feedback & Condition Reports</h4>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-dark btn-sm">Back</a>
+    </div>
+    <div class="card-body">
+        <table class="table table-bordered table-striped" id="feedbackTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Facility</th>
+                    <th>Faculty</th>
+                    <th>Rating</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fb in feedbacks %}
+                <tr>
+                    <td>{{ fb.date_submitted }}</td>
+                    <td>{{ fb.facility_name }}</td>
+                    <td>{{ fb.faculty_name }}</td>
+                    <td>
+                        {% if fb.rating >= 4 %}<span class="badge bg-success">{{ fb.rating }}/5</span>
+                        {% elif fb.rating == 3 %}<span class="badge bg-warning">{{ fb.rating }}/5</span>
+                        {% else %}<span class="badge bg-danger">{{ fb.rating }}/5</span>{% endif %}
+                    </td>
+                    <td>{{ fb.remarks }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>$(document).ready(function(){$('#feedbackTable').DataTable();});</script>
+{% endblock %}

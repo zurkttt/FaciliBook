@@ -1,54 +1,151 @@
 {% extends 'base.html' %}
+
 {% block content %}
 <div class="card shadow">
     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-        <h4>My Dashboard</h4>
-        <a href="{{ url_for('faculty_booking') }}" class="btn btn-success btn-sm">+ New Booking</a>
+        <h4 class="mb-0">My Dashboard</h4>
+        <a href="{{ url_for('faculty_booking') }}" class="btn btn-success btn-sm">
+            <i class="fa-solid fa-plus"></i> New Booking
+        </a>
     </div>
     <div class="card-body">
-        <h5>Welcome back, {{ session.name }}!</h5>
-        <hr>
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
                     <th>Facility</th>
                     <th>Schedule</th>
                     <th>Status</th>
-                    <th>Action</th> </tr>
+                    <th>Action</th>
+                </tr>
             </thead>
             <tbody>
                 {% for b in bookings %}
                 <tr>
-                    <td>{{ b.facility_name }}</td>
+                    <td class="fw-bold">{{ b.facility_name }}</td>
+                    
                     <td>
-                        {{ b.start_time }} <br>
-                        <small class="text-muted">to {{ b.end_time }}</small>
+                        {{ b.start_time.strftime('%b %d, %Y') }}<br>
+                        <small class="text-muted">
+                            {{ b.start_time.strftime('%I:%M %p') }} - {{ b.end_time.strftime('%I:%M %p') }}
+                        </small>
                     </td>
+
                     <td>
                         {% if b.status == 'pending' %}
                             <span class="badge bg-warning text-dark">Pending</span>
                         {% elif b.status == 'approved' %}
                             <span class="badge bg-success">Approved</span>
-                            <div class="small text-muted mt-1" style="font-size: 0.8em;">
-                                By: {{ b.approver_name }}
-                            </div>
                         {% else %}
                             <span class="badge bg-danger">Rejected</span>
+                            
+                            {% if b.rejection_reason %}
+                                <button class="btn btn-sm text-danger p-0 ms-1" 
+                                        onclick="showReason('{{ b.rejection_reason }}')" 
+                                        title="View Reason">
+                                    <i class="fa-solid fa-circle-question"></i>
+                                </button>
+                            {% endif %}
                         {% endif %}
                     </td>
+
                     <td>
-                        {% if b.status == 'approved' %}
-                            <a href="{{ url_for('print_permit', id=b.id) }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <i class="fa-solid fa-print"></i> Print Permit
-                            </a>
-                        {% else %}
-                            <span class="text-muted">-</span>
-                        {% endif %}
+                        <div class="btn-group">
+                            
+                            {% if b.status == 'approved' %}
+                                <a href="{{ url_for('print_permit', id=b.id) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Print Permit">
+                                    <i class="fa-solid fa-print"></i>
+                                </a>
+                            {% endif %}
+
+                            {% if b.status == 'approved' and b.end_time < current_time and not b.feedback_id %}
+                                <button class="btn btn-sm btn-outline-warning" 
+                                        onclick="$('#bid').val('{{b.id}}');$('#fbModal').modal('show');" 
+                                        title="Rate Facility">
+                                    <i class="fa-solid fa-star"></i>
+                                </button>
+                            {% endif %}
+
+                            {% if b.start_time > current_time %}
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="confirmCancel('{{ b.id }}')" 
+                                        title="Cancel Booking">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            {% endif %}
+                        </div>
                     </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">You have no booking history.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
+<div class="modal fade" id="fbModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('submit_feedback') }}">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Rate Facility Condition</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="booking_id" id="bid">
+        <div class="mb-3">
+            <label>Rating</label>
+            <select name="rating" class="form-select" required>
+                <option value="5">5 - Excellent (Clean & Working)</option>
+                <option value="4">4 - Good</option>
+                <option value="3">3 - Average</option>
+                <option value="2">2 - Poor</option>
+                <option value="1">1 - Very Poor (Damages)</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Remarks</label>
+            <textarea name="remarks" class="form-control" placeholder="Any issues found?"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Submit Report</button>
+      </div>
+    </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 1. Show Rejection Reason Popup
+    function showReason(reason) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Request Rejected',
+            text: reason,
+            confirmButtonColor: '#dc3545'
+        });
+    }
+
+    // 2. Confirm Cancellation Popup
+    function confirmCancel(bookingId) {
+        Swal.fire({
+            title: 'Cancel Booking?',
+            text: "Are you sure? This will immediately release the slot for others.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, cancel it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = "/cancel_booking/" + bookingId;
+            }
+        });
+    }
+</script>
 {% endblock %}

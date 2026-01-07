@@ -1,27 +1,160 @@
 {% extends 'base.html' %}
+
 {% block content %}
+<style>
+    /* Force calendar events to wrap text and grow in height */
+    .fc-daygrid-event {
+        white-space: normal !important;
+        align-items: flex-start !important;
+    }
+    .fc-event-title {
+        font-size: 0.85em;
+        font-weight: bold;
+    }
+</style>
 <div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow">
-            <div class="card-header bg-dark text-white"><h4>New Reservation</h4></div>
+    <div class="col-md-10">
+        
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-calendar-days"></i> Select a Date</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    <i class="fa-solid fa-hand-pointer"></i> <strong>Tip:</strong> Click on any empty date to select it for your booking.
+                </p>
+                <div class="mb-2 d-flex gap-3">
+    <div class="d-flex align-items-center">
+        <div style="width: 15px; height: 15px; background-color: #198754; margin-right: 5px; border-radius: 3px;"></div>
+        <small>Approved (Confirmed)</small>
+    </div>
+    <div class="d-flex align-items-center">
+        <div style="width: 15px; height: 15px; background-color: #ffc107; margin-right: 5px; border-radius: 3px;"></div>
+        <small>Pending (Waiting for Admin)</small>
+    </div>
+</div>
+
+<div id="calendar"></div>
+                <div id="calendar"></div>
+            </div>
+        </div>
+
+        <div class="card shadow" id="bookingFormCard">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="fa-solid fa-pen-nib"></i> Book a Facility</h5>
+            </div>
             <div class="card-body">
                 <form method="POST">
-                    <div class="mb-3"><label>Facility</label>
-                        <select name="facility_id" class="form-select">
-                            {% for fac in facilities %}<option value="{{ fac.id }}">{{ fac.name }}</option>{% endfor %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Venue</label>
+                        <select name="facility_id" class="form-select" required>
+                            <option value="" selected disabled>-- Choose a Room --</option>
+                            {% for fac in facilities %}
+                            <option value="{{ fac.id }}">{{ fac.name }} (Capacity: {{ fac.capacity }})</option>
+                            {% endfor %}
                         </select>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col"><label>Start</label><input type="datetime-local" name="start_time" class="form-control" required></div>
-                        <div class="col"><label>End</label><input type="datetime-local" name="end_time" class="form-control" required></div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Start Time</label>
+                            <input type="datetime-local" name="start_time" id="start_time" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">End Time</label>
+                            <input type="datetime-local" name="end_time" id="end_time" class="form-control" required>
+                        </div>
                     </div>
-                    <div class="mb-3"><label>Purpose</label><input type="text" name="purpose" class="form-control" required></div>
-                    <div class="d-grid"><button type="submit" class="btn btn-success">Submit Request</button></div>
-                    <div class="mt-2 text-center"><a href="{{ url_for('my_bookings') }}">Cancel</a></div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Purpose of Activity</label>
+                        <input type="text" name="purpose" class="form-control" required placeholder="e.g. CS101 Final Exam">
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">Submit Request</button>
+                        <a href="{{ url_for('my_bookings') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
                 </form>
             </div>
         </div>
+
     </div>
 </div>
-{% if error %}<script>Swal.fire('Error', '{{ error }}', 'error');</script>{% endif %}
+
+{% if error %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        Swal.fire({
+            icon: 'error',
+            title: 'Booking Failed',
+            text: '{{ error }}'
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script> 
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- 1. BLOCK PAST DATES ON INPUTS ---
+        var now = new Date();
+        // Format to YYYY-MM-DDTHH:MM (Local Time)
+        // We do a little trick to handle timezone offset properly
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        var minDateTime = now.toISOString().slice(0,16);
+
+        // Apply "min" attribute to inputs
+        document.getElementById('start_time').setAttribute('min', minDateTime);
+        document.getElementById('end_time').setAttribute('min', minDateTime);
+
+
+        // --- 2. CALENDAR CONFIGURATION ---
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek'
+            },
+            height: 'auto',
+            events: '/api/calendar',
+            eventColor: '#198754',
+            displayEventTime: false,
+
+            // Disable clicking on dates before today
+            validRange: {
+                start: new Date().toISOString().split('T')[0] // Start from Today
+            },
+
+            dateClick: function(info) {
+                // Double check in JS just in case
+                var clickedDate = new Date(info.dateStr);
+                var today = new Date();
+                today.setHours(0,0,0,0); // normalize today to midnight
+
+                if(clickedDate < today) {
+                    Swal.fire('Error', 'You cannot book a past date!', 'warning');
+                    return;
+                }
+
+                var dateStr = info.dateStr;
+                var startTime = dateStr + 'T08:00';
+                var endTime = dateStr + 'T10:00';
+                document.getElementById('start_time').value = startTime;
+                document.getElementById('end_time').value = endTime;
+                document.getElementById('bookingFormCard').scrollIntoView({ behavior: 'smooth' });
+                
+                // Highlight logic
+                document.querySelectorAll('.fc-day').forEach(el => el.style.backgroundColor = '');
+                info.dayEl.style.backgroundColor = 'rgba(25, 135, 84, 0.1)';
+            }
+        });
+        calendar.render();
+    });
+</script>
 {% endblock %}

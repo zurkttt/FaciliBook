@@ -2,31 +2,35 @@
 {% block content %}
 <div class="card shadow">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <h4>Manage Facilities</h4>
+        <h4>Facilities</h4>
         <div>
-            <button class="btn btn-light text-primary fw-bold" onclick="openAddModal()">+ Add New</button>
+            <button class="btn btn-light btn-sm text-primary fw-bold" onclick="openModal()">+ Add New</button>
             <a href="{{ url_for('admin_dashboard') }}" class="btn btn-dark btn-sm">Back</a>
         </div>
     </div>
     <div class="card-body">
-        <table class="table table-bordered" id="facTable">
-            <thead>
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
                 <tr>
-                    <th>ID</th>
                     <th>Name</th>
-                    <th>Capacity</th>
-                    <th>Actions</th>
+                    <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
-                {% for fac in facilities %}
+                {% for f in facilities %}
                 <tr>
-                    <td>{{ fac.id }}</td>
-                    <td>{{ fac.name }}</td>
-                    <td>{{ fac.capacity }}</td>
+                    <td>{{f.name}}</td>
                     <td>
-                        <button class="btn btn-warning btn-sm" onclick="openEditModal('{{ fac.id }}','{{ fac.name }}','{{ fac.description }}','{{ fac.capacity }}')">Edit</button>
-                        <a href="/delete_facility/{{ fac.id }}" class="btn btn-danger btn-sm" onclick="return confirm('Delete?')">Delete</a>
+                        {% if f.status=='active' %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-danger">Maintenance</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="edit('{{f.id}}','{{f.name}}','{{f.description}}','{{f.capacity}}','{{f.status}}')">Edit</button>
+                        <a href="/delete_facility/{{f.id}}" class="btn btn-danger btn-sm" onclick="return confirm('Delete?')">Delete</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -35,24 +39,49 @@
     </div>
 </div>
 
-<div class="modal fade" id="facilityModal" tabindex="-1">
+<div class="modal fade" id="facModal">
   <div class="modal-dialog">
     <form method="POST">
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title" id="modalTitle">Add Facility</h5></div>
       <div class="modal-body">
-        <input type="hidden" name="facility_id" id="facId">
-        <div class="mb-3"><label>Name</label><input type="text" name="name" id="facName" class="form-control" required></div>
-        <div class="mb-3"><label>Description</label><textarea name="description" id="facDesc" class="form-control"></textarea></div>
-        <div class="mb-3"><label>Capacity</label><input type="number" name="capacity" id="facCap" class="form-control" required></div>
+        <input type="hidden" name="facility_id" id="fid">
+        <div class="mb-3">
+            <label>Name</label>
+            <input type="text" name="name" id="fname" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label>Description</label>
+            <textarea name="description" id="fdesc" class="form-control"></textarea>
+        </div>
+        <div class="mb-3">
+            <label>Capacity</label>
+            <input type="number" name="capacity" id="fcap" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label>Status</label>
+            <select name="status" id="fstat" class="form-select">
+                <option value="active">Active</option>
+                <option value="maintenance">Maintenance</option>
+            </select>
+        </div>
       </div>
       <div class="modal-footer"><button type="submit" class="btn btn-primary">Save</button></div>
     </div>
     </form>
   </div>
 </div>
+
 <script>
-    function openAddModal() { $('#modalTitle').text('Add New'); $('#facId').val(''); $('#facName').val(''); $('#facDesc').val(''); $('#facCap').val(''); $('#facilityModal').modal('show'); }
-    function openEditModal(id, name, desc, cap) { $('#modalTitle').text('Edit'); $('#facId').val(id); $('#facName').val(name); $('#facDesc').val(desc); $('#facCap').val(cap); $('#facilityModal').modal('show'); }
+    function openModal(){
+        $('#modalTitle').text('Add New Facility');
+        $('#fid').val('');$('#fname').val('');$('#fdesc').val('');$('#fcap').val('');$('#fstat').val('active');
+        $('#facModal').modal('show');
+    }
+    function edit(id,n,d,c,s){
+        $('#modalTitle').text('Edit Facility');
+        $('#fid').val(id);$('#fname').val(n);$('#fdesc').val(d);$('#fcap').val(c);$('#fstat').val(s);
+        $('#facModal').modal('show');
+    }
 </script>
 {% endblock %}
