@@ -4,7 +4,7 @@
 <div class="card shadow">
     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
         <h4><i class="fa-solid fa-users-gear"></i> Manage Users</h4>
-        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">Back to Dashboard</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-light btn-sm">Back</a>
     </div>
     <div class="card-body">
         <table class="table table-bordered table-striped" id="usersTable">
@@ -15,6 +15,7 @@
                     <th>Username</th>
                     <th>Role</th>
                     <th>Actions</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -25,17 +26,35 @@
                     <td>{{ user.username }}</td>
                     <td><span class="badge bg-info text-dark">{{ user.role }}</span></td>
                     <td>
-                        <button class="btn btn-sm btn-warning" 
-                                onclick="openEditModal('{{ user.id }}', '{{ user.name }}', '{{ user.username }}')">
-                            <i class="fa-solid fa-pen"></i> Edit
-                        </button>
-                        
-                        <a href="{{ url_for('delete_user', id=user.id) }}" 
-                           class="btn btn-sm btn-danger" 
-                           onclick="return confirm('Are you sure you want to remove this user? This will also delete their booking history.')">
-                            <i class="fa-solid fa-trash"></i> Delete
-                        </a>
-                    </td>
+    <button class="btn btn-warning btn-sm" 
+            onclick="openEditModal('{{ user.id }}', '{{ user.name }}', '{{ user.username }}')" 
+            title="Edit User">
+        <i class="fa-solid fa-pen"></i> Edit
+    </button>
+
+    {% if user.is_active == 1 %}
+        <a href="{{ url_for('toggle_user_status', id=user.id) }}" 
+           class="btn btn-danger btn-sm"
+           onclick="return confirm('Are you sure you want to DEACTIVATE this user? They will not be able to log in.')"
+           title="Deactivate Account">
+            <i class="fa-solid fa-ban"></i> Deactivate
+        </a>
+    {% else %}
+        <a href="{{ url_for('toggle_user_status', id=user.id) }}" 
+           class="btn btn-success btn-sm"
+           onclick="return confirm('Reactivate this user account?')"
+           title="Reactivate Account">
+            <i class="fa-solid fa-check"></i> Activate
+        </a>
+    {% endif %}
+</td>
+                    <td>
+    {% if user.is_active == 1 %}
+        <span class="badge bg-success">Active</span>
+    {% else %}
+        <span class="badge bg-secondary">Inactive</span>
+    {% endif %}
+</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -59,6 +59,10 @@ def login():
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
         account = cursor.fetchone()
+        if account:
+            # CHECK IF ACCOUNT IS ACTIVE
+            if account['is_active'] == 0:
+                return render_template('login.html', error="Account deactivated. Contact Admin.")
         if account and account['password'] == password:
             session['loggedin'] = True
             session['id'] = account['id']
@@ -119,6 +123,49 @@ def admin_dashboard():
         pending_bookings = cursor.fetchall()
         
         return render_template('admin_dashboard.html', pending_bookings=pending_bookings)
+    return redirect(url_for('login'))
+
+@app.route('/admin/users', methods=['GET', 'POST'])
+def manage_users():
+    if 'role' in session and session['role'] == 'admin':
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        if request.method == 'POST':
+            action = request.form.get('action')
+            user_id = request.form.get('user_id')
+            
+            if action == 'edit':
+                # Update Name and Username
+                new_name = request.form['name']
+                new_username = request.form['username']
+                cursor.execute('UPDATE users SET name=%s, username=%s WHERE id=%s', (new_name, new_username, user_id))
+                flash('User details updated successfully!', 'success')
+                
+            elif action == 'reset_password':
+                # Reset Password to a default one (e.g., "123456")
+                new_pass = request.form['new_password']
+                cursor.execute('UPDATE users SET password=%s WHERE id=%s', (new_pass, user_id))
+                flash('Password reset successfully!', 'success')
+                
+            mysql.connection.commit()
+            return redirect(url_for('manage_users'))
+
+        # Fetch all Faculty users (exclude admins)
+        cursor.execute("SELECT * FROM users WHERE role != 'admin'")
+        users = cursor.fetchall()
+        return render_template('manage_users.html', users=users)
+        
+    return redirect(url_for('login'))
+
+
+@app.route('/delete_user/<int:id>')
+def delete_user(id):
+    if 'role' in session and session['role'] == 'admin':
+        cursor = mysql.connection.cursor()
+        cursor.execute('UPDATE users SET is_active = 0 WHERE id = %s', (id,))
+        mysql.connection.commit()
+        flash('User account deactivated. History preserved.', 'warning')
+        return redirect(url_for('manage_users'))
     return redirect(url_for('login'))
 
 @app.route('/api/stats')
@@ -249,31 +296,6 @@ def reject_booking():
         return redirect(url_for('admin_bookings'))
     return redirect(url_for('login'))
 
-@app.route('/admin/users', methods=['GET', 'POST'])
-def manage_users():
-    if 'role' in session and session['role'] == 'admin':
-        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        if request.method == 'POST':
-            if request.form['password']:
-                cursor.execute('UPDATE users SET name=%s, username=%s, password=%s WHERE id=%s', 
-                             (request.form['name'], request.form['username'], request.form['password'], request.form['user_id']))
-            else:
-                cursor.execute('UPDATE users SET name=%s, username=%s WHERE id=%s', 
-                             (request.form['name'], request.form['username'], request.form['user_id']))
-            mysql.connection.commit()
-            return redirect(url_for('manage_users'))
-        cursor.execute("SELECT * FROM users WHERE role != 'admin'")
-        return render_template('manage_users.html', users=cursor.fetchall())
-    return redirect(url_for('login'))
-
-@app.route('/delete_user/<int:id>')
-def delete_user(id):
-    if 'role' in session and session['role'] == 'admin':
-        cursor = mysql.connection.cursor()
-        cursor.execute('DELETE FROM users WHERE id = %s', (id,))
-        mysql.connection.commit()
-    return redirect(url_for('manage_users'))
-
 @app.route('/admin/reports')
 def admin_reports():
     if 'role' in session and session['role'] == 'admin':
@@ -302,6 +324,27 @@ def admin_feedback():
             ORDER BY fb.date_submitted DESC
         """)
         return render_template('admin_feedback.html', feedbacks=cursor.fetchall())
+    return redirect(url_for('login'))
+
+@app.route('/toggle_user_status/<int:id>')
+def toggle_user_status(id):
+    if 'role' in session and session['role'] == 'admin':
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        
+        # 1. Get current status
+        cursor.execute("SELECT is_active FROM users WHERE id = %s", (id,))
+        user = cursor.fetchone()
+        
+        if user:
+            # 2. Toggle Status (If 1 make 0, If 0 make 1)
+            new_status = 0 if user['is_active'] == 1 else 1
+            cursor.execute("UPDATE users SET is_active = %s WHERE id = %s", (new_status, id))
+            mysql.connection.commit()
+            
+            msg = "User Deactivated." if new_status == 0 else "User Reactivated."
+            flash(msg, 'warning' if new_status == 0 else 'success')
+            
+        return redirect(url_for('manage_users'))
     return redirect(url_for('login'))
 
 # --- FACULTY ROUTES ---

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 07, 2026 at 03:16 PM
+-- Generation Time: Jan 07, 2026 at 03:57 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -114,20 +114,21 @@ CREATE TABLE `users` (
   `name` varchar(100) NOT NULL,
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `role` enum('admin','faculty') NOT NULL
+  `role` enum('admin','faculty') NOT NULL,
+  `is_active` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `name`, `username`, `password`, `role`) VALUES
-(1, 'System Admin', 'admin', 'admin', 'admin'),
-(2, 'Dill Doe', 'test', 'test', 'faculty'),
-(3, 'Test2', 'Test2', 'test2', 'faculty'),
-(4, 'Test Test', 'test3', 'test3', 'faculty'),
-(5, 'Johny Bravo', 'Johnjohn', 'johnjohn', 'faculty'),
-(6, 'Shibal Jinja', 'shibal', 'shibal', 'faculty');
+INSERT INTO `users` (`id`, `name`, `username`, `password`, `role`, `is_active`) VALUES
+(1, 'System Admin', 'admin', 'admin', 'admin', 1),
+(2, 'Dill Doe', 'test', 'test', 'faculty', 1),
+(3, 'Test2', 'Test2', 'test2', 'faculty', 1),
+(4, 'Test Test', 'test3', 'test3', 'faculty', 1),
+(5, 'Johny Bravo', 'Johnjohn', 'johnjohn', 'faculty', 1),
+(6, 'Shibal Jinja', 'shibal', 'shibal', 'faculty', 1);
 
 --
 -- Indexes for dumped tables
