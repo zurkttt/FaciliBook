@@ -1,14 +1,21 @@
 {% extends 'base.html' %}
 
+{% block head %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+{% endblock %}
+
 {% block content %}
 <div class="card shadow">
     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
         <h4><i class="fa-solid fa-users-gear"></i> Manage Users</h4>
-        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-light btn-sm">Back</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
     </div>
     <div class="card-body">
-        <table class="table table-bordered table-striped" id="usersTable">
-            <thead>
+        
+        <table id="usersTable" class="table table-hover align-middle" style="width:100%">
+            <thead class="table-light">
                 <tr>
                     <th>ID</th>
                     <th>Full Name</th>
@@ -20,41 +27,41 @@
             </thead>
             <tbody>
                 {% for user in users %}
-                <tr>
+                <tr class="{{ 'table-secondary text-muted' if user.is_active == 0 else '' }}">
                     <td>{{ user.id }}</td>
-                    <td>{{ user.name }}</td>
+                    <td class="fw-bold">{{ user.name }}</td>
                     <td>{{ user.username }}</td>
-                    <td><span class="badge bg-info text-dark">{{ user.role }}</span></td>
+                    <td><span class="badge bg-info text-dark">Faculty</span></td>
+                    
                     <td>
-    <button class="btn btn-warning btn-sm" 
-            onclick="openEditModal('{{ user.id }}', '{{ user.name }}', '{{ user.username }}')" 
-            title="Edit User">
-        <i class="fa-solid fa-pen"></i> Edit
-    </button>
+                        <button class="btn btn-warning btn-sm" 
+                                onclick="openEditModal('{{ user.id }}', '{{ user.name }}', '{{ user.username }}')" 
+                                title="Edit User">
+                            <i class="fa-solid fa-pen"></i> Edit
+                        </button>
 
-    {% if user.is_active == 1 %}
-        <a href="{{ url_for('toggle_user_status', id=user.id) }}" 
-           class="btn btn-danger btn-sm"
-           onclick="return confirm('Are you sure you want to DEACTIVATE this user? They will not be able to log in.')"
-           title="Deactivate Account">
-            <i class="fa-solid fa-ban"></i> Deactivate
-        </a>
-    {% else %}
-        <a href="{{ url_for('toggle_user_status', id=user.id) }}" 
-           class="btn btn-success btn-sm"
-           onclick="return confirm('Reactivate this user account?')"
-           title="Reactivate Account">
-            <i class="fa-solid fa-check"></i> Activate
-        </a>
-    {% endif %}
-</td>
+                        {% if user.is_active == 1 %}
+                            <button class="btn btn-danger btn-sm" 
+                                    onclick="confirmStatusChange('{{ url_for('toggle_user_status', id=user.id) }}', 'deactivate')"
+                                    title="Deactivate Account">
+                                <i class="fa-solid fa-ban"></i> Deactivate
+                            </button>
+                        {% else %}
+                            <button class="btn btn-success btn-sm" 
+                                    onclick="confirmStatusChange('{{ url_for('toggle_user_status', id=user.id) }}', 'activate')"
+                                    title="Reactivate Account">
+                                <i class="fa-solid fa-check"></i> Activate
+                            </button>
+                        {% endif %}
+                    </td>
+
                     <td>
-    {% if user.is_active == 1 %}
-        <span class="badge bg-success">Active</span>
-    {% else %}
-        <span class="badge bg-secondary">Inactive</span>
-    {% endif %}
-</td>
+                        {% if user.is_active == 1 %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -71,7 +78,8 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <input type="hidden" name="user_id" id="editUserId">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="user_id" id="editId">
         
         <div class="mb-3">
             <label>Full Name</label>
@@ -82,12 +90,13 @@
             <label>Username</label>
             <input type="text" name="username" id="editUsername" class="form-control" required>
         </div>
-
+        
         <hr>
+        
         <div class="mb-3">
             <label class="text-danger fw-bold">Reset Password (Optional)</label>
             <input type="text" name="password" class="form-control" placeholder="Leave empty to keep current password">
-            <small class="text-muted">Type a new password only if you want to change it.</small>
+            <small class="text-muted">Type here only if you want to change it.</small>
         </div>
       </div>
       <div class="modal-footer">
@@ -98,20 +107,72 @@
     </form>
   </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
-    $(document).ready(function() {
-        $('#usersTable').DataTable();
+    // A. Initialize DataTables
+    $(document).ready(function () {
+        $('#usersTable').DataTable({
+            "order": [[ 0, "asc" ]], // Sort by ID
+            "pageLength": 10,
+            "language": { "search": "Search Users:" }
+        });
     });
 
+    // B. Open Edit Modal Logic
     function openEditModal(id, name, username) {
-        $('#editUserId').val(id);
-        $('#editName').val(name);
-        $('#editUsername').val(username);
-        $('#editUserModal').modal('show');
+        document.getElementById('editId').value = id;
+        document.getElementById('editName').value = name;
+        document.getElementById('editUsername').value = username;
+        var myModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+        myModal.show();
+    }
+
+    // C. Confirmation Popup logic
+    function confirmStatusChange(url, action) {
+        let titleText = action === 'deactivate' ? 'Deactivate User?' : 'Reactivate User?';
+        let bodyText = action === 'deactivate' 
+            ? "They will not be able to log in anymore!" 
+            : "They will regain access to the system.";
+        let iconType = action === 'deactivate' ? 'warning' : 'question';
+        let confirmColor = action === 'deactivate' ? '#d33' : '#198754';
+
+        Swal.fire({
+            title: titleText,
+            text: bodyText,
+            icon: iconType,
+            showCancelButton: true,
+            confirmButtonColor: confirmColor,
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, proceed!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = url;
+            }
+        });
     }
 </script>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <script>
+        Swal.fire({
+            // This line automatically matches 'success', 'warning', or 'error' from Python
+            icon: '{{ category }}', 
+            title: '{{ "Success" if category == "success" else ("Warning" if category == "warning" else "Error") }}',
+            text: '{{ message }}',
+            confirmButtonColor: '#198754'
+        });
+      </script>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
 {% endblock %}

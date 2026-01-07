@@ -131,26 +131,38 @@ def manage_users():
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         
         if request.method == 'POST':
+            # Debugging: Print what the server receives (Check your terminal!)
+            print("Received Form Data:", request.form)
+
             action = request.form.get('action')
             user_id = request.form.get('user_id')
             
+            # UNIFIED EDIT LOGIC
             if action == 'edit':
-                # Update Name and Username
-                new_name = request.form['name']
-                new_username = request.form['username']
-                cursor.execute('UPDATE users SET name=%s, username=%s WHERE id=%s', (new_name, new_username, user_id))
-                flash('User details updated successfully!', 'success')
+                name = request.form['name']
+                username = request.form['username']
+                password = request.form.get('password') # Optional field
                 
-            elif action == 'reset_password':
-                # Reset Password to a default one (e.g., "123456")
-                new_pass = request.form['new_password']
-                cursor.execute('UPDATE users SET password=%s WHERE id=%s', (new_pass, user_id))
-                flash('Password reset successfully!', 'success')
+                # Check if username is taken by someone else
+                cursor.execute("SELECT id FROM users WHERE username = %s AND id != %s", (username, user_id))
+                if cursor.fetchone():
+                    flash('Error: That username is already taken!', 'error')
+                else:
+                    if password and password.strip():
+                        # Update Name, Username AND Password
+                        cursor.execute('UPDATE users SET name=%s, username=%s, password=%s WHERE id=%s', 
+                                     (name, username, password, user_id))
+                        flash('User details and password updated!', 'success')
+                    else:
+                        # Update ONLY Name and Username
+                        cursor.execute('UPDATE users SET name=%s, username=%s WHERE id=%s', 
+                                     (name, username, user_id))
+                        flash('User details updated successfully!', 'success')
                 
             mysql.connection.commit()
             return redirect(url_for('manage_users'))
 
-        # Fetch all Faculty users (exclude admins)
+        # Fetch all Faculty users
         cursor.execute("SELECT * FROM users WHERE role != 'admin'")
         users = cursor.fetchall()
         return render_template('manage_users.html', users=users)
